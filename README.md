@@ -1,4 +1,4 @@
-# MoveX-Backend API DOCUMENTATION
+# MoveX-Backend API Documentation
 
 ## /api/users/register Endpoint
 
