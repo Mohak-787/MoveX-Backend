@@ -1,6 +1,7 @@
 const User = require("../models/user.model");
 const userService = require("../services/user.service");
 const { validationResult } = require("express-validator");
+const BlacklistToken = require("../models/blacklistToken.model");
 
 /**
  * - User register controller
@@ -26,6 +27,8 @@ async function registerUser(req, res) {
 
   const userObj = user.toObject();
   delete userObj.password;
+
+  res.cookie("token", token);
 
   res.status(201).json({
     user: userObj,
@@ -60,13 +63,38 @@ async function loginUser(req, res) {
   const userObj = user.toObject();
   delete userObj.password;
 
-  res.status(201).json({
+  res.cookie("token", token);
+
+  res.status(200).json({
     user: userObj,
     token
   });
 }
 
+/**
+ * - User profile controller
+ * - GET /api/users/profile
+ */
+async function userProfile(req, res) {
+  res.status(200).json(req.user);
+}
+
+/**
+ * - User logout controller
+ * - POST /api/users/logout
+ */
+async function logoutUser(req, res) {
+  const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
+
+  await BlacklistToken.create({ token });
+
+  res.clearCookie("token");
+  res.status(200).json({ message: "Logged out" });
+}
+
 module.exports = {
   registerUser,
-  loginUser
+  loginUser,
+  userProfile,
+  logoutUser
 }

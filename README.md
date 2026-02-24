@@ -91,14 +91,14 @@ Field requirements
 - `password`: string, required, minimum 6 characters.
 
 Responses / Status codes
-- `201 Created` — authentication successful (token returned).
+- `200 OK` — authentication successful (token returned).
 - `400 Bad Request` — validation errors.
 - `401 Unauthorized` — invalid credentials (email not found or wrong password).
 - `500 Internal Server Error` — unexpected server error.
 
 Examples
 
-Successful response (201):
+Successful response (200):
 
 ```json
 {
@@ -128,3 +128,67 @@ Validation error example (400):
 Notes
 - The `password` field is never returned in the response; it is stored hashed in the DB.
 - Validation is performed using `express-validator` on `email` and `password`.
+
+## 3.) /api/users/profile Endpoint
+
+Description
+- Get the authenticated user's profile information.
+- Endpoint: `GET /api/users/profile`
+
+Expected request
+- Headers (one of):
+  - `Authorization: Bearer <jwt-token>`
+  - or include cookie: `token=<jwt-token>`
+
+Responses / Status codes
+- `200 OK` — profile returned (user object).
+- `401 Unauthorized` — missing or invalid token.
+- `500 Internal Server Error` — unexpected server error.
+
+Examples
+
+Successful response (200):
+
+```json
+{
+  "_id": "699d63cbf9c574d37e2b4c20",
+  "fullName": { "firstName": "Mohak", "lastName": "Devkota" },
+  "email": "mohakdevkota@example.com",
+  "socketId": null,
+  "createdAt": "2026-02-24T08:39:39.786Z",
+  "updatedAt": "2026-02-24T08:39:39.786Z"
+}
+```
+
+Notes
+- This endpoint is protected by the auth middleware; a valid JWT (signed with `JWT_SECRET`) must be provided either as a bearer token or in the `token` cookie.
+
+## 4.) /api/users/logout Endpoint
+
+Description
+- Invalidate the current auth token (adds token to server-side blacklist) and clears the `token` cookie.
+- Endpoint: `POST /api/users/logout`
+
+Expected request
+- Headers (one of):
+  - `Authorization: Bearer <jwt-token>`
+  - or include cookie: `token=<jwt-token>`
+
+Responses / Status codes
+- `200 OK` — logout successful (`{ message: "Logged out" }`).
+- `400 Bad Request` — token not provided in header or cookie.
+- `401 Unauthorized` — token invalid or user not found.
+- `500 Internal Server Error` — unexpected server error.
+
+Examples
+
+Successful response (200):
+
+```json
+{
+  "message": "Logged out"
+}
+```
+
+Notes
+- The server stores blacklisted tokens; providing the same token after logout should be rejected by the auth middleware if blacklist checks are enforced.
