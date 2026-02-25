@@ -272,3 +272,120 @@ Notes
 - The DB model enforces uniqueness on `email` and stores a hashed `password` field.
 - On success the API returns a JWT token for authentication and sets the `token` cookie for convenience.
 
+## 6.) /api/movers/login Endpoint
+
+Description
+- Authenticate an existing mover and return a JWT token.
+- Endpoint: `POST /api/movers/login`
+
+Expected request
+- Headers:
+  - `Content-Type: application/json`
+- JSON body (example):
+
+```json
+{
+  "email": "alex.driver@example.com",
+  "password": "s3cretpwd"
+}
+```
+
+Field requirements
+- `email`: string, required, must be a valid email address.
+- `password`: string, required, minimum 6 characters.
+
+Responses / Status codes
+- `200 OK` — authentication successful. Response includes the `mover` object and an auth `token` (also set as a `token` cookie).
+- `400 Bad Request` — validation errors.
+- `401 Unauthorized` — invalid credentials (email not found or wrong password).
+- `500 Internal Server Error` — unexpected server error.
+
+Examples
+
+Successful response (200):
+
+```json
+{
+  "mover": {
+    "_id": "699d63cbf9c574d37e2b4c20",
+    "fullName": { "firstName": "Alex", "lastName": "Driver" },
+    "email": "alex.driver@example.com",
+    "vehicle": { "color": "red", "plate": "ABC-123", "capacity": 3, "vehicleType": "car" },
+    "socketId": null,
+    "createdAt": "2026-02-24T08:39:39.786Z",
+    "updatedAt": "2026-02-24T08:39:39.786Z"
+  },
+  "token": "<jwt-token>"
+}
+```
+
+Notes
+- The `password` field is never returned in the response; it is stored hashed in the DB.
+- Validation is performed using `express-validator` on `email` and `password`.
+- On success the API returns a JWT token for authentication and sets the `token` cookie for convenience; the API also accepts a Bearer token in the `Authorization` header.
+
+## 7.) /api/movers/profile Endpoint
+
+Description
+- Get the authenticated mover's profile information.
+- Endpoint: `GET /api/movers/profile`
+
+Expected request
+- Headers (one of):
+  - `Authorization: Bearer <jwt-token>`
+  - or include cookie: `token=<jwt-token>`
+
+Responses / Status codes
+- `200 OK` — profile returned (mover object).
+- `401 Unauthorized` — missing, blacklisted, or invalid token.
+- `500 Internal Server Error` — unexpected server error.
+
+Examples
+
+Successful response (200):
+
+```json
+{
+  "_id": "699d63cbf9c574d37e2b4c20",
+  "fullName": { "firstName": "Alex", "lastName": "Driver" },
+  "email": "alex.driver@example.com",
+  "vehicle": { "color": "red", "plate": "ABC-123", "capacity": 3, "vehicleType": "car" },
+  "socketId": null,
+  "createdAt": "2026-02-24T08:39:39.786Z",
+  "updatedAt": "2026-02-24T08:39:39.786Z"
+}
+```
+
+Notes
+- This endpoint is protected by the mover auth middleware; a valid JWT (signed with `JWT_SECRET`) must be provided either as a bearer token or in the `token` cookie.
+
+## 8.) /api/movers/logout Endpoint
+
+Description
+- Invalidate the current mover auth token (adds token to server-side blacklist) and clears the `token` cookie.
+- Endpoint: `POST /api/movers/logout`
+
+Expected request
+- Headers (one of):
+  - `Authorization: Bearer <jwt-token>`
+  - or include cookie: `token=<jwt-token>`
+
+Responses / Status codes
+- `200 OK` — logout successful (`{ message: "Logged out" }`).
+- `401 Unauthorized` — missing, blacklisted, or invalid token.
+- `500 Internal Server Error` — unexpected server error.
+
+Examples
+
+Successful response (200):
+
+```json
+{
+  "message": "Logged out"
+}
+```
+
+Notes
+- The server stores blacklisted tokens; providing the same token after logout should be rejected by the auth middleware.
+
+
