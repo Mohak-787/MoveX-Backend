@@ -192,3 +192,83 @@ Successful response (200):
 
 Notes
 - The server stores blacklisted tokens; providing the same token after logout should be rejected by the auth middleware if blacklist checks are enforced.
+
+## 5.) /api/movers/register Endpoint
+
+Description
+- Register a new mover (driver) in the system.
+- Endpoint: `POST /api/movers/register`
+
+Expected request
+- Headers:
+  - `Content-Type: application/json`
+- JSON body (example):
+
+```json
+{
+  "fullName": {
+    "firstName": "Alex",
+    "lastName": "Driver"
+  },
+  "email": "alex.driver@example.com",
+  "password": "s3cretpwd",
+  "vehicle": {
+    "color": "red",
+    "plate": "ABC-123",
+    "capacity": 3,
+    "vehicleType": "car"
+  }
+}
+```
+
+Field requirements
+- `fullName.firstName`: string, required, minimum 3 characters.
+- `fullName.lastName`: string, optional, minimum 3 characters if provided.
+- `email`: string, required, must be a valid email address.
+- `password`: string, required, minimum 6 characters.
+- `vehicle.color`: string, required, minimum 3 characters.
+- `vehicle.plate`: string, required, minimum 3 characters.
+- `vehicle.capacity`: integer, required, minimum 1.
+- `vehicle.vehicleType`: string, required, one of: `car`, `bike`, `scooter`.
+
+Responses / Status codes
+- `201 Created` — mover successfully registered. Response includes the created `mover` object and an auth `token` (also set as a `token` cookie).
+- `400 Bad Request` — validation errors (returns `errors` array describing which fields failed validation) or other bad input.
+- `409 Conflict` — duplicate email (if the email already exists in DB).
+- `500 Internal Server Error` — unexpected server error.
+
+Examples
+
+Successful response (201):
+
+```json
+{
+  "mover": {
+    "_id": "603d2f8a2b1e8b0012345678",
+    "fullName": { "firstName": "Alex", "lastName": "Driver" },
+    "email": "alex.driver@example.com",
+    "vehicle": { "color": "red", "plate": "ABC-123", "capacity": 3, "vehicleType": "car" },
+    "socketId": null,
+    "createdAt": "2026-02-24T00:00:00.000Z",
+    "updatedAt": "2026-02-24T00:00:00.000Z"
+  },
+  "token": "<jwt-token>"
+}
+```
+
+Validation error example (400):
+
+```json
+{
+  "errors": [
+    { "msg": "Invalid Email", "param": "email", "location": "body" },
+    { "msg": "First name must be at least 3 characters long", "param": "fullName.firstName", "location": "body" }
+  ]
+}
+```
+
+Notes
+- Validation is performed using `express-validator` on the fields listed above.
+- The DB model enforces uniqueness on `email` and stores a hashed `password` field.
+- On success the API returns a JWT token for authentication and sets the `token` cookie for convenience.
+
