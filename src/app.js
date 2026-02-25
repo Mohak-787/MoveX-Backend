@@ -11,8 +11,10 @@ app.use(cookieParser());
 
 /* Routes import */
 const userRoutes = require("./routes/user.route");
+const moverRoutes = require("./routes/mover.route");
 
 /* Routes config */
 app.use("/api/users", userRoutes);
+app.use("/api/movers", moverRoutes);
 
 module.exports = app;

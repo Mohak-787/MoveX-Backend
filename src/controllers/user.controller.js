@@ -14,6 +14,12 @@ async function registerUser(req, res) {
   }
 
   const { fullName, password, email } = req.body;
+
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    return res.status(400).json({ message: "Email already in use" });
+  }
+
   const hashedPassword = await User.hashPassword(password);
 
   const user = await userService.createUser({
