@@ -414,6 +414,13 @@ Example successful response (200):
 }
 ```
 
+Notes
+- This endpoint relies on the Google Maps Geocoding API; ensure `GOOGLE_MAPS_API` is configured in environment variables.
+- Validation is performed using `express-validator` on the `address` query parameter (minimum 3 characters); invalid requests return `400 Bad Request` with an `errors` array.
+- On success the response body contains `ltd` and `lng` numeric fields. (Note: the code currently uses `ltd`; consider renaming to `lat` if you refactor for clarity.)
+- If the Maps service cannot find coordinates the controller returns `404 Not Found`; other upstream errors map to `500 Internal Server Error`.
+- Be mindful of Google API rate limits and billing; consider server-side caching or debouncing frequent requests.
+
 ## 10.) /api/maps/get-distance-time Endpoint
 
 Description
@@ -441,6 +448,14 @@ Example successful response (200):
 }
 ```
 
+Notes
+- This endpoint uses the Google Maps Distance Matrix API to calculate travel distance and duration.
+- Ensure `GOOGLE_MAPS_API` is configured in environment variables.
+- Validation is performed using `express-validator` on the `origin` and `destination` query parameters (minimum 3 characters each).
+- On success the response body contains `distance` and `duration` fields.
+- If the Maps service cannot calculate distance or duration, the controller returns `500 Internal Server Error`.
+- Be mindful of Google API rate limits and billing; consider server-side caching or debouncing frequent requests.
+
 ## 11.) /api/maps/get-suggestions Endpoint
 
 Description
@@ -462,5 +477,98 @@ Example successful response (200):
 ```json
 ["1600 Amphitheatre Pkwy, Mountain View, CA, USA", "1600 Amphitheatre Parkway, Mountain View, CA 94043, USA"]
 ```
+
+Notes
+- This endpoint uses the Google Maps Places API to fetch address suggestions based on partial input.
+- Ensure `GOOGLE_MAPS_API` is configured in environment variables.
+- Validation is performed using `express-validator` on the `input` query parameter (minimum 3 characters).
+- On success the response body contains an array of suggestion strings.
+- Be mindful of Google API rate limits and billing; consider server-side caching or debouncing frequent requests.
+
+## 12.) /api/moves/create Endpoint
+
+Description
+- Create a new move (booking) for a user.
+- Endpoint: `POST /api/moves/create`
+
+Expected request
+- Headers:
+  - `Content-Type: application/json`
+  - Authentication: cookie `token=<jwt-token>` or `Authorization: Bearer <jwt-token>` (protected by user auth middleware)
+- JSON body (example):
+
+```json
+{
+  "userId": "603d2f8a2b1e8b0012345678",
+  "pickup": "1600 Amphitheatre Pkwy, Mountain View, CA",
+  "destination": "1 Infinite Loop, Cupertino, CA",
+  "vehicleType": "car"
+}
+```
+
+Field requirements / validation
+- `userId`: string, required, must be a 24-character MongoDB ObjectId.
+- `pickup`: string, required, minimum 3 characters.
+- `destination`: string, required, minimum 3 characters.
+- `vehicleType`: string, required, one of: `car`, `bike`, `scooter`.
+
+Responses / Status codes
+- `201 Created` — move successfully created. Returns the created move object (see model [`Move`](src/models/move.model.js)).
+- `400 Bad Request` — validation errors.
+- `401 Unauthorized` — missing/invalid token.
+- `500 Internal Server Error` — unexpected server error.
+
+Example successful response (201):
+
+```json
+{
+  "_id": "60c9f0f2d4b3a90012345678",
+  "user": "603d2f8a2b1e8b0012345678",
+  "pickup": "1600 Amphitheatre Pkwy, Mountain View, CA",
+  "destination": "1 Infinite Loop, Cupertino, CA",
+  "fare": 200,
+  "status": "pending",
+  "otp": "<hidden>",
+  "createdAt": "2026-02-24T00:00:00.000Z",
+  "updatedAt": "2026-02-24T00:00:00.000Z"
+}
+```
+
+Notes
+- This endpoint is protected by user authentication middleware; a valid JWT must be provided.
+- The `fare` field is calculated dynamically based on the distance, time, and vehicle type.
+- Validation is performed using `express-validator` on the fields listed above.
+
+## 13.) /api/moves/get-fare Endpoint
+
+Description
+- Calculate the fare for a move based on distance, time, and vehicle type.
+- Endpoint: `GET /api/moves/get-fare`
+
+Expected request
+- Query parameters:
+  - `origin` (string) — required, minimum 3 characters
+  - `destination` (string) — required, minimum 3 characters
+  - `vehicleType` (string) — required, one of: `car`, `bike`, `scooter`
+- Authentication: `Authorization: Bearer <jwt-token>` or cookie `token=<jwt-token>`
+
+Responses / Status codes
+- `200 OK` — returns the calculated fare.
+- `400 Bad Request` — validation errors (returns `errors` array).
+- `500 Internal Server Error` — unexpected server error.
+
+Example successful response (200):
+
+```json
+{
+  "fare": 250
+}
+```
+
+Notes
+- This endpoint uses the Google Maps Distance Matrix API to calculate distance and duration between the origin and destination.
+- The fare is calculated based on a base rate and multipliers for distance, time, and vehicle type.
+- Ensure `GOOGLE_MAPS_API` is configured in environment variables.
+- Validation is performed using `express-validator` on the query parameters.
 
 
