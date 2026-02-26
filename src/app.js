@@ -12,9 +12,11 @@ app.use(cookieParser());
 /* Routes import */
 const userRoutes = require("./routes/user.route");
 const moverRoutes = require("./routes/mover.route");
+const mapRoutes = require("./routes/maps.route");
 
 /* Routes config */
 app.use("/api/users", userRoutes);
 app.use("/api/movers", moverRoutes);
+app.use("/api/maps", mapRoutes);
 
 module.exports = app;

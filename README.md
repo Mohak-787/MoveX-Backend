@@ -388,4 +388,79 @@ Successful response (200):
 Notes
 - The server stores blacklisted tokens; providing the same token after logout should be rejected by the auth middleware.
 
+## 9.) /api/maps/get-coordinates Endpoint
+
+Description
+- Get geographic coordinates (latitude/longitude) for a provided address string.
+- Endpoint: `GET /api/maps/get-coordinates`
+
+Expected request
+- Query parameters:
+  - `address` (string) — required, minimum 3 characters
+- Authentication: `Authorization: Bearer <jwt-token>` or cookie `token=<jwt-token>`
+
+Responses / Status codes
+- `200 OK` — coordinates returned as `{ ltd: <lat>, lng: <lng> }`.
+- `400 Bad Request` — validation errors (returns `errors` array).
+- `404 Not Found` — coordinates not found for the address.
+- `500 Internal Server Error` — unexpected server error.
+
+Example successful response (200):
+
+```json
+{
+  "ltd": 37.4224764,
+  "lng": -122.0842499
+}
+```
+
+## 10.) /api/maps/get-distance-time Endpoint
+
+Description
+- Get travel distance and duration between an origin and a destination.
+- Endpoint: `GET /api/maps/get-distance-time`
+
+Expected request
+- Query parameters:
+  - `origin` (string) — required, minimum 3 characters
+  - `destination` (string) — required, minimum 3 characters
+- Authentication: `Authorization: Bearer <jwt-token>` or cookie `token=<jwt-token>`
+
+Responses / Status codes
+- `200 OK` — returns the Distance Matrix element (distance, duration and related fields).
+- `400 Bad Request` — validation errors (returns `errors` array).
+- `500 Internal Server Error` — unexpected server error.
+
+Example successful response (200):
+
+```json
+{
+  "distance": { "text": "5.2 km", "value": 5200 },
+  "duration": { "text": "12 mins", "value": 720 },
+  "status": "OK"
+}
+```
+
+## 11.) /api/maps/get-suggestions Endpoint
+
+Description
+- Get address autocomplete suggestions for a partial input string.
+- Endpoint: `GET /api/maps/get-suggestions`
+
+Expected request
+- Query parameters:
+  - `input` (string) — required, minimum 3 characters
+- Authentication: `Authorization: Bearer <jwt-token>` or cookie `token=<jwt-token>`
+
+Responses / Status codes
+- `200 OK` — returns an array of suggestion strings.
+- `400 Bad Request` — validation errors (returns `errors` array).
+- `500 Internal Server Error` — unexpected server error.
+
+Example successful response (200):
+
+```json
+["1600 Amphitheatre Pkwy, Mountain View, CA, USA", "1600 Amphitheatre Parkway, Mountain View, CA 94043, USA"]
+```
+
 
