@@ -59,7 +59,7 @@ const moverSchema = new mongoose.Schema({
     }
   },
   location: {
-    lat: {
+    ltd: {
       type: Number,
     },
     lng: {

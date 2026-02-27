@@ -8,7 +8,7 @@ module.exports.createMover = async ({
     throw new Error("All fields are required");
   }
 
-  const mover = Mover.create({
+  const mover = await Mover.create({
     fullName: { firstName, lastName },
     email,
     password,

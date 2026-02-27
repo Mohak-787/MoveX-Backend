@@ -1,5 +1,7 @@
 const Move = require('../models/move.model');
 const mapService = require('../services/maps.service');
+const { sendMessageToSocketId } = require('../socket');
+const crypto = require('crypto');
 
 async function getFare(pickup, destination) {
   if (!pickup || !destination) {
@@ -32,32 +34,102 @@ async function getFare(pickup, destination) {
   return fare;
 }
 
-module.exports = getFare;
 
 function getOTP(num) {
-  function generateOTP(num) {
-    const OTP = crypto.randomInt(Math.pow(10, num - 1), Math.pow(10, num)).toString();
-    return OTP;
-  }
-  return generateOTP(num);
+  // wrapper around crypto.randomInt to generate a fixed‑length numeric string
+  const OTP = crypto.randomInt(Math.pow(10, num - 1), Math.pow(10, num)).toString();
+  return OTP;
 }
 
-module.exports.createMove = async ({
+async function createMove({
   user, pickup, destination, vehicleType
-}) => {
+}) {
   if (!user || !pickup || !destination || !vehicleType) {
     throw new Error('All fields are required');
   }
 
   const fare = await getFare(pickup, destination);
 
-  const move = Move.create({
+  const move = await Move.create({
     user,
     pickup,
     destination,
     otp: getOTP(6),
     fare: fare[vehicleType]
   });
+
+  return move;
+}
+
+// export functions as named properties for consistency
+module.exports = {
+  getFare,
+  createMove,
+  confirmMove,
+  startMove,
+  endMove
+};
+
+async function confirmMove({ moveId, mover }) {
+  if (!moveId) {
+    throw new Error('Move id is required');
+  }
+
+  const move = await Move.findOne({ _id: moveId }).populate('user').select('+OTP');
+
+  if (!move) {
+    throw new Error('Move not found');
+  }
+
+  move.status = 'accepted';
+  move.mover = mover._id;
+
+  return move.save();
+}
+
+async function startMove({ moveId, OTP, mover }) {
+  if (!moveId || !OTP) {
+    throw new Error('Move id and OTP are required');
+  }
+
+  const move = await Move.findOne({ _id: moveId }).populate('user').select('+OTP');
+
+  if (!move) {
+    throw new Error('Move not found');
+  }
+
+  if (move.otp !== OTP) {
+    throw new Error('Invalid OTP');
+  }
+
+  move.status = 'ongoing';
+
+  return move.save();
+}
+
+async function endMove({ moveId, mover }) {
+  if (!moveId) {
+    throw new Error('Move id is required');
+  }
+
+  const move = await Move.findOne({
+    _id: moveId,
+    mover: mover._id
+  }).populate('user').populate('mover').select('+OTP');
+
+  if (!move) {
+    throw new Error('Move not found');
+  }
+
+  if (move.status !== 'ongoing') {
+    throw new Error('Move not ongoing');
+  }
+
+  await Move.findOneAndUpdate({
+    _id: moveId
+  }, {
+    status: 'completed'
+  })
 
   return move;
 }

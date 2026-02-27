@@ -547,13 +547,13 @@ Description
 
 Expected request
 - Query parameters:
-  - `origin` (string) — required, minimum 3 characters
+  - `pickup` (string) — required, minimum 3 characters
   - `destination` (string) — required, minimum 3 characters
   - `vehicleType` (string) — required, one of: `car`, `bike`, `scooter`
 - Authentication: `Authorization: Bearer <jwt-token>` or cookie `token=<jwt-token>`
 
 Responses / Status codes
-- `200 OK` — returns the calculated fare.
+- `200 OK` — returns the calculated fare object with keys `car`, `bike`, and `scooter`.
 - `400 Bad Request` — validation errors (returns `errors` array).
 - `500 Internal Server Error` — unexpected server error.
 
@@ -561,14 +561,138 @@ Example successful response (200):
 
 ```json
 {
-  "fare": 250
+  "car": 320,
+  "bike": 180,
+  "scooter": 180
 }
 ```
 
 Notes
-- This endpoint uses the Google Maps Distance Matrix API to calculate distance and duration between the origin and destination.
+- This endpoint uses the Google Maps Distance Matrix API to calculate distance and duration between the pickup and destination.
 - The fare is calculated based on a base rate and multipliers for distance, time, and vehicle type.
 - Ensure `GOOGLE_MAPS_API` is configured in environment variables.
 - Validation is performed using `express-validator` on the query parameters.
 
+
+## 14.) /api/moves/confirm Endpoint
+
+Description
+- Mover accepts a pending move and becomes assigned to it.
+- Endpoint: `POST /api/moves/confirm`
+
+Expected request
+- Headers:
+  - `Content-Type: application/json`
+  - Authentication: cookie `token=<jwt-token>` or `Authorization: Bearer <jwt-token>` (protected by mover auth middleware)
+- JSON body:
+
+```json
+{
+  "moveId": "60c9f0f2d4b3a90012345678"
+}
+```
+
+Field requirements / validation
+- `moveId`: required, must be a valid MongoDB ObjectId.
+
+Responses / Status codes
+- `200 OK` — move status updated to `accepted` and `mover` field set. Returns the updated move object.
+- `400 Bad Request` — validation errors.
+- `401 Unauthorized` — missing/invalid mover token.
+- `500 Internal Server Error` — unexpected server error.
+
+Example successful response (200):
+```json
+{
+  "_id": "60c9f0f2d4b3a90012345678",
+  "status": "accepted",
+  "mover": "604f9a1e2b5c3d0012345678",
+  "user": "603d2f8a2b1e8b0012345678",
+  "pickup": "...",
+  "destination": "...",
+  "fare": 200,
+  ...
+}
+```
+
+Notes
+- Only authenticated movers can call this endpoint; ensure a valid JWT is provided.
+- After confirmation the mover is associated with the move and the user is notified via socket.io.
+
+## 15.) /api/moves/start-move Endpoint
+
+Description
+- Mover begins an accepted move by providing the OTP sent to the user.
+- Endpoint: `GET /api/moves/start-move`
+
+Expected request
+- Query parameters:
+  - `moveId` (string) — required, valid MongoDB ObjectId
+  - `OTP` (string) — required, exactly 6 digits
+- Authentication: mover token as cookie or bearer header.
+
+Responses / Status codes
+- `200 OK` — move status changed to `ongoing`; returns updated move.
+- `400 Bad Request` — validation errors or wrong OTP.
+- `401 Unauthorized` — missing/invalid mover token.
+- `500 Internal Server Error` — unexpected server error.
+
+Example successful response (200):
+```json
+{
+  "_id": "60c9f0f2d4b3a90012345678",
+  "status": "ongoing",
+  "mover": "604f9a1e2b5c3d0012345678",
+  "user": "603d2f8a2b1e8b0012345678",
+  "pickup": "...",
+  "destination": "...",
+  "fare": 200,
+  ...
+}
+```
+
+Notes
+- OTP verification is required to prevent unauthorized starts.
+- User receives a `move-started` socket notification upon success.
+
+## 16.) /api/moves/end-move Endpoint
+
+Description
+- Mover marks an ongoing move as completed.
+- Endpoint: `POST /api/moves/end-move`
+
+Expected request
+- Headers:
+  - `Content-Type: application/json`
+  - Authentication: mover token in cookie or Authorization header.
+- JSON body:
+```json
+{
+  "moveId": "60c9f0f2d4b3a90012345678"
+}
+```
+
+Field requirements / validation
+- `moveId`: string, required, valid ObjectId.
+
+Responses / Status codes
+- `200 OK` — returns the move object (status `completed`).
+- `400 Bad Request` — validation errors.
+- `401 Unauthorized` — invalid/missing mover token.
+- `500 Internal Server Error` — unexpected server error.
+
+Example successful response (200):
+```json
+{
+  "_id": "60c9f0f2d4b3a90012345678",
+  "status": "completed",
+  "mover": "604f9a1e2b5c3d0012345678",
+  "user": "603d2f8a2b1e8b0012345678",
+  ...
+}
+```
+
+Notes
+- Only the mover who was assigned to the move may complete it.
+- Upon completion a `move-ended` socket event is sent to the user.
 
